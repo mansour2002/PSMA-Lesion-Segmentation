@@ -270,4 +270,3 @@ if __name__ == "__main__":
     )
 
     y = model(x)
-    print(y.shape)
