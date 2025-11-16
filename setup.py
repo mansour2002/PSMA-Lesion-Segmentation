@@ -1,0 +1,37 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="psma-lesion-segmentation",
+    version="1.0.0",
+    description="Deep learning framework for PSMA PET/CT lesion segmentation using UNETR",
+    author="mansour2002",
+    author_email="mansour2002@users.noreply.github.com",
+    url="https://github.com/mansour2002/PSMA-Lesion-Segmentation",
+    packages=find_packages(),
+    package_dir={"": "code"},
+    python_requires=">=3.8",
+    install_requires=[
+        "torch>=1.12.0",
+        "torchvision>=0.13.0",
+        "pytorch-lightning>=1.7.0",
+        "monai>=1.0.0",
+        "mmcv>=1.5.0",
+        "numpy>=1.21.0",
+        "scipy>=1.7.0",
+        "nibabel>=3.2.1",
+        "einops>=0.3.0",
+        "jsonargparse[signatures]>=4.12.0",
+        "tensorboard>=2.8.0",
+    ],
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Scientific/Engineering :: Medical Science Apps.",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+    ],
+    keywords="deep-learning medical-imaging segmentation PSMA PET-CT UNETR transformers",
+)

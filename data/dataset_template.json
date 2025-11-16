@@ -1,0 +1,24 @@
+{
+  "training": [
+    {
+      "case_id": "patient_001",
+      "ct_image": "data/cases/patient_001/ct.nii",
+      "pt_image": "data/cases/patient_001/pet.nii",
+      "labels": "data/cases/patient_001/seg.nii"
+    },
+    {
+      "case_id": "patient_002",
+      "ct_image": "data/cases/patient_002/ct.nii",
+      "pt_image": "data/cases/patient_002/pet.nii",
+      "labels": "data/cases/patient_002/seg.nii"
+    }
+  ],
+  "validation": [
+    {
+      "case_id": "patient_050",
+      "ct_image": "data/cases/patient_050/ct.nii",
+      "pt_image": "data/cases/patient_050/pet.nii",
+      "labels": "data/cases/patient_050/seg.nii"
+    }
+  ]
+}

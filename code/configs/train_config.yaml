@@ -1,0 +1,110 @@
+seed_everything: 42
+trainer:
+  accelerator: gpu
+  devices: 2
+  max_epochs: 1000
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 1
+  val_check_interval: 1.0
+  limit_train_batches: 1.0
+  limit_val_batches: 1.0
+  limit_test_batches: 1.0
+  limit_predict_batches: 1.0
+  logger:
+    class_path: pytorch_lightning.loggers.TensorBoardLogger
+    init_args:
+      save_dir: ./outputs
+      name: PSMA_Lesion_Segmentation
+      version: unetr8ps_dice_loss_v01
+      default_hp_metric: false
+  enable_checkpointing: true
+  callbacks:
+    - class_path: pytorch_lightning.callbacks.ModelCheckpoint
+      init_args:
+        filename: "unetr_dice_{epoch:02d}-{val_dice:.4f}"
+        monitor: val/dice_score_avg
+        mode: max
+        save_top_k: 2
+        save_last: true
+    - class_path: pytorch_lightning.callbacks.LearningRateMonitor
+      init_args:
+        logging_interval: epoch
+        log_momentum: false
+  default_root_dir: ./outputs/checkpoints
+  gradient_clip_algorithm: norm
+  num_nodes: 1
+  enable_progress_bar: true
+  overfit_batches: 0.0
+  check_val_every_n_epoch: 1
+  fast_dev_run: false
+  min_epochs: null
+  max_steps: -1
+  min_steps: null
+  max_time: null
+  strategy: ddp
+  sync_batchnorm: false
+  precision: 32
+  enable_model_summary: true
+  num_sanity_val_steps: 0
+  profiler: null
+  benchmark: true
+  deterministic: true
+  reload_dataloaders_every_n_epochs: 0
+  detect_anomaly: false
+  plugins: null
+model:
+  class_path: __main__.SegmentationTrainer
+  init_args:
+    num_classes: 1
+    model_name: unetr8ps_base
+    frozen_encoder: False
+    model_dict:
+      pretrained: null  # Path to pre-trained weights (if any)
+      in_channels: 2  # CT + PET concatenated
+      out_channels: 1  # Binary lesion segmentation
+      img_size: [96, 96, 96]
+      feature_size: 16
+      hidden_size: 768
+      mlp_dim: 3072
+      num_layers: 12
+      num_heads: 12
+      pos_embed: perceptron
+      norm_name: instance
+      res_block: true
+      conv_block: true
+      dropout_rate: 0.0
+      revise_keys: []  # Key mapping for pre-trained weights
+data:
+  class_path: data.dataset.LesionSegmentationDataset
+  init_args:
+    root_dir: ./data  # Update this to your data directory
+    json_path: ./data/dataset.json  # Update this to your dataset JSON
+    cache_dir: ./outputs/cache
+    downsample_ratio: [1.0, 1.0, 1.0]
+    batch_size: 1
+    val_batch_size: 1
+    num_workers: 6
+    cache_num: 4
+    cache_rate: 1.0
+    dist: false
+    samples_per_image: 6  # Number of crops per training image
+    val_samples_per_image: 2  # Number of crops per validation image
+    roi_size: [96, 96, 96]  # Patch size for training
+    foreground_ratio: 0.7  # 70% of crops centered on lesions
+    intensity_range_ct: [-1000, 1200]  # CT Hounsfield Units
+    intensity_range_pet: [0, 5000]  # PET SUV range
+    skip_prob: 0.8  # Probability to skip background-only patches
+    binarize: True  # Convert multi-class labels to binary
+    exclude_roi_labels: True  # Exclude anatomical ROIs
+optimizer:
+  class_path: torch.optim.AdamW
+  init_args:
+    lr: 0.0001
+    weight_decay: 0.05
+lr_scheduler:
+  class_path: optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR
+  init_args:
+    warmup_epochs: 50
+    max_epochs: 1000
+    eta_min: 0.00005
+ckpt_path: null
