@@ -2,7 +2,7 @@ seed_everything: 42
 trainer:
   accelerator: gpu
   devices: 2
-  max_epochs: 500
+  max_epochs: 400
   gradient_clip_val: 1.0
   accumulate_grad_batches: 1
   val_check_interval: 1.0
@@ -43,7 +43,7 @@ trainer:
   max_time: null
   strategy: ddp
   sync_batchnorm: false
-  precision: 32
+  precision: 16-mixed
   enable_model_summary: true
   num_sanity_val_steps: 0
   profiler: null
@@ -75,27 +75,23 @@ model:
       dropout_rate: 0.0
       revise_keys: []  # Key mapping for pre-trained weights
 data:
-  class_path: data.dataset.LesionSegmentationDataset
+  class_path: data.axial_sliding_window_dataset.AxialSlidingWindowDataset
   init_args:
     root_dir: ./data  # Update this to your data directory
     json_path: ./data/dataset.json  # Update this to your dataset JSON
     cache_dir: ./outputs/cache
-    downsample_ratio: [1.0, 1.0, 1.0]
-    batch_size: 1
+    roi_size: [96, 96, 96]  # Size of each axial patch
+    num_patches: 6  # Overlapping axial patches per volume, spanning the full Z extent
+    batch_size: 1  # One volume per GPU per iteration (6 patches)
     val_batch_size: 1
     num_workers: 6
     cache_num: 4
-    cache_rate: 1.0
+    cache_rate: 0.5
     dist: false
-    samples_per_image: 6  # Number of crops per training image
-    val_samples_per_image: 2  # Number of crops per validation image
-    roi_size: [96, 96, 96]  # Patch size for training
-    foreground_ratio: 0.7  # 70% of crops centered on lesions
     intensity_range_ct: [-1000, 1200]  # CT Hounsfield Units
-    intensity_range_pet: [0, 5000]  # PET SUV range
-    skip_prob: 0.8  # Probability to skip background-only patches
+    intensity_range_pet: [0, 5000]  # PET SUV x 100
     binarize: True  # Convert multi-class labels to binary
-    exclude_roi_labels: True  # Exclude anatomical ROIs
+    exclude_roi_labels: True  # Exclude anatomical ROIs (labels 1, 5, 8)
 optimizer:
   class_path: torch.optim.AdamW
   init_args:
@@ -105,6 +101,6 @@ lr_scheduler:
   class_path: optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR
   init_args:
     warmup_epochs: 50
-    max_epochs: 500
+    max_epochs: 400
     eta_min: 0.00005
 ckpt_path: null

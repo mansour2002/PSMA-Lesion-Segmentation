@@ -6,7 +6,7 @@ from monai.metrics import DiceMetric
 from models import UNETR8PS
 from monai.networks.nets import SegResNet
 from monai.data import decollate_batch
-from losses.dice_loss import DiceLoss
+from monai.losses import DiceLoss
 
 import numpy as np
 import torch, random
@@ -43,7 +43,7 @@ class SegmentationTrainer(pl.LightningModule):
             self.model = SegResNet(**model_dict)
 
         
-        self.loss_function = DiceLoss(sigmoid=True)
+        self.loss_function = DiceLoss(sigmoid=True, squared_pred=True, to_onehot_y=False)
 
         # Post-processing
         self.post_pred = AsDiscrete(sigmoid=True, threshold=0.5)
@@ -66,11 +66,37 @@ class SegmentationTrainer(pl.LightningModule):
     def forward(self, x):
         return self.model(x)
 
+    @staticmethod
+    def stitch_patches(patches, z_starts, target_z_size):
+        """Average overlapping axial patches [1, C, X, Y, roi_z] into one [1, C, X, Y, Z] column."""
+        b, c, x, y, roi_z = patches[0].shape
+        max_z = max(z + roi_z for z in z_starts)
+        acc = torch.zeros((b, c, x, y, max_z), device=patches[0].device, dtype=patches[0].dtype)
+        cnt = torch.zeros_like(acc)
+        for patch, z in zip(patches, z_starts):
+            acc[..., z:z + roi_z] += patch
+            cnt[..., z:z + roi_z] += 1.0
+        return (acc / (cnt + 1e-8))[..., :target_z_size]
+
+    def stitched_forward(self, batch):
+        """Run the network on all ASW patches of one volume and stitch predictions and labels
+        along Z, so the loss is computed on the reconstructed column rather than per patch."""
+        patches = batch["patches"]
+        z_starts = [int(z.item()) for z in batch["z_starts"]]
+        target_z = int(batch["original_shape"][-1].item())
+
+        images = torch.stack([p["image"].squeeze(0) for p in patches]).to(self.device)
+        labels = torch.stack([p["label"].squeeze(0) for p in patches]).to(self.device).float()
+        outputs = self.forward(images)
+
+        n = len(patches)
+        pred = self.stitch_patches([outputs[i:i + 1] for i in range(n)], z_starts, target_z)
+        label = self.stitch_patches([labels[i:i + 1] for i in range(n)], z_starts, target_z)
+        return pred, label
+
     def training_step(self, batch, batch_idx):
-        images, labels = batch["image"], batch["label"]
-        batch_size = images.shape[0]
-        output = self.forward(images)
-        labels = labels.float()
+        output, labels = self.stitched_forward(batch)
+        batch_size = 1
 
         assert labels.min() >= 0 and labels.max() <= 1
 
@@ -105,11 +131,8 @@ class SegmentationTrainer(pl.LightningModule):
             self.epoch_loss_values = []  
             
     def validation_step(self, batch, batch_idx):
-        images, labels = batch["image"], batch["label"]
-        batch_size = images.shape[0]
-
-        outputs = self.forward(images)
-        labels = labels.float()
+        outputs, labels = self.stitched_forward(batch)
+        batch_size = 1
 
         loss = self.loss_function(outputs, labels)
 
@@ -175,7 +198,6 @@ class SegmentationTrainer(pl.LightningModule):
                     **self.model_dict,
                     "loss": "DiceLoss",
                     "data": self.trainer.datamodule.json_path,
-                    "ds_ratio": self.trainer.datamodule.downsample_ratio,
                     "batch_size": self.trainer.datamodule.batch_size,
                     "distribution": self.trainer.datamodule.dist,
                     "max_epochs": self.trainer.max_epochs,

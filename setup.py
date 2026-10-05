@@ -15,7 +15,7 @@ setup(
         "torchvision>=0.13.0",
         "pytorch-lightning>=1.7.0",
         "monai>=1.0.0",
-        "mmcv>=1.5.0",
+        "mmcv>=1.5.0,<2.0.0",
         "numpy>=1.21.0",
         "scipy>=1.7.0",
         "nibabel>=3.2.1",
