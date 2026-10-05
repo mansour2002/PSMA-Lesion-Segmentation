@@ -8,8 +8,8 @@ pytorch-lightning>=1.7.0
 # Medical Imaging Library (MONAI)
 monai>=1.0.0
 
-# Model checkpoint utilities
-mmcv>=1.5.0
+# Model checkpoint utilities (mmcv.runner was removed in mmcv 2.x)
+mmcv>=1.5.0,<2.0.0
 
 # Scientific Computing
 numpy>=1.21.0
